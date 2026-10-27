@@ -118,10 +118,11 @@ function render(): void {
     return;
   }
   lastShape = JSON.stringify([pb.voices, listeners, gmBlocked, receiver]);
-  const scroll = app.scrollTop;
+  const scroll = app.querySelector(".scroll")?.scrollTop ?? 0;
   const focus = focusedField();
   app.innerHTML = gm ? gmView() : playerView();
-  app.scrollTop = scroll;
+  const area = app.querySelector(".scroll");
+  if (area) area.scrollTop = scroll;
   focus?.();
   updateProgress();
 }
@@ -166,13 +167,13 @@ function playerView(): string {
   const list = nowPlaying.length
     ? `<ul class="now">${nowPlaying.map(n => `<li>${icon("mode--1")}<span><b>${esc(n.name)}</b>${n.playlist ? `<small>${esc(n.playlist)}</small>` : ""}</span></li>`).join("")}</ul>`
     : `<p class="muted">${t.nothing}</p>`;
-  return `${header()}${blockedBanner()}
-    <section class="player"><h2>${t.nowPlaying}</h2>${list}<p class="status ${receiver.connected ? "ok" : ""}">${status}</p></section>`;
+  return `${header()}<div class="scroll">${blockedBanner()}
+    <section class="player"><h2>${t.nowPlaying}</h2>${list}<p class="status ${receiver.connected ? "ok" : ""}">${status}</p></section></div>`;
 }
 
 function gmView(): string {
   const playlists = lib.playlists.map(playlistView).join("") || `<p class="muted pad">${t.empty}</p>`;
-  return `${header(`<span class="listeners">${t.listeners(listeners)}</span>`)}${blockedBanner()}
+  return `${header(`<span class="listeners">${t.listeners(listeners)}</span>`)}<div class="scroll">${blockedBanner()}
     <main>${playlists}</main>
     <footer>
       <button class="primary" data-act="new-playlist">${icon("plus")} ${t.newPlaylist}</button>
@@ -181,7 +182,7 @@ function gmView(): string {
           <input type="range" min="0" max="100" step="5" value="${lib.entrada}" data-act="entrada"></label>
         <p class="muted">${t.localNote}${storageNote ? ` ${storageNote}` : ""}</p>
       </details>
-    </footer>
+    </footer></div>
     <input type="file" id="files" multiple accept="${ACCEPT}" hidden>`;
 }
 
