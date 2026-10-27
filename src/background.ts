@@ -50,6 +50,7 @@ OBR.onReady(async () => {
       conductor?.engine.setVolume(volume);
     } else if (m.type === "retry") {
       receiver.retry();
+      links.retry();
       conductor?.engine.resume();
     } else if (m.type === "hello") {
       reportReceiver();
@@ -59,13 +60,21 @@ OBR.onReady(async () => {
   });
 
   const reportReceiver = () => {
-    post({ type: "receiver", connected: receiver.connected, blocked: receiver.blocked });
+    post({ type: "receiver", connected: receiver.connected, blocked: receiver.blocked || links.blocked });
     updateBadge();
   };
   receiver.onChange = reportReceiver;
+  // Links report being blocked by polling; keep the window and the badge up to date.
+  let linksBlocked = false;
+  setInterval(() => {
+    if (links.blocked !== linksBlocked) {
+      linksBlocked = links.blocked;
+      reportReceiver();
+    }
+  }, 1000);
 
   const updateBadge = () => {
-    const blocked = receiver.blocked || !!conductor?.engine.blocked;
+    const blocked = receiver.blocked || links.blocked || !!conductor?.engine.blocked;
     OBR.action.setBadgeText(blocked ? "!" : undefined).catch(() => undefined);
   };
 
@@ -110,6 +119,10 @@ class Conductor {
     await this.engine.resume();
     this.engine.ctx.addEventListener("statechange", () => this.#onBlocked());
     this.#onBlocked();
+    // Until the GM has clicked somewhere in Owlbear, Chrome keeps the audio suspended: keep asking.
+    setInterval(() => {
+      if (this.engine.blocked) this.engine.resume();
+    }, 1500);
     this.#lib = await loadLibrary().catch(() => this.#lib);
     this.#pb = refreshVoices(this.#lib, readSavedPlayback() ?? emptyPlayback());
     await this.#clearStaleNowPlaying();

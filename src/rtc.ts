@@ -205,8 +205,14 @@ export class Receiver {
         this.onChange?.();
       }
     }).catch(() => {
-      this.blocked = true;
-      this.onChange?.();
+      if (!this.blocked) {
+        this.blocked = true;
+        this.onChange?.();
+      }
+      // Chrome blocks sound until the person clicks somewhere in Owlbear; keep trying until then.
+      setTimeout(() => {
+        if (el.srcObject && el.paused) this.#play(el);
+      }, 1500);
     });
   }
 

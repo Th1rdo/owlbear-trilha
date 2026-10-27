@@ -72,6 +72,10 @@ interface Sound {
   setVolume(v: number): void;
   play(): void;
   pause(): void;
+  /** Sounding, or about to (buffering). False while the browser blocks it. */
+  isPlaying(): boolean;
+  /** Reached the end (a non-repeating track). */
+  isEnded(): boolean;
   seek(sec: number): void;
   time(): number;
   duration(): number;
@@ -101,8 +105,10 @@ class FileSound implements Sound {
     });
   }
   setVolume(v: number) { this.el.volume = Math.min(1, Math.max(0, v)); }
-  play() { this.el.play().catch(() => this.onError?.("blocked")); }
+  play() { this.el.play().catch(() => undefined); }
   pause() { this.el.pause(); }
+  isPlaying() { return !this.el.paused; }
+  isEnded() { return this.el.ended; }
   seek(sec: number) { this.el.currentTime = sec; }
   time() { return this.el.currentTime; }
   duration() { return this.el.duration; }
@@ -115,6 +121,7 @@ class FileSound implements Sound {
 
 /* The YouTube IFrame API, loaded once. */
 interface YTPlayer {
+  getPlayerState(): number;
   playVideo(): void; pauseVideo(): void; seekTo(s: number, allowAhead: boolean): void; setVolume(v: number): void;
   getCurrentTime(): number; getDuration(): number; destroy(): void;
 }
@@ -177,6 +184,9 @@ class YouTubeSound implements Sound {
   setVolume(v: number) { this.#player?.setVolume(Math.round(Math.min(1, Math.max(0, v)) * 100)); }
   play() { this.#player?.playVideo(); }
   pause() { this.#player?.pauseVideo(); }
+  // 1 = playing, 3 = buffering; 0 = ended.
+  isPlaying() { return [1, 3].includes(this.#player?.getPlayerState?.() ?? -1); }
+  isEnded() { return this.#player?.getPlayerState?.() === 0 && !this.#loop; }
   seek(sec: number) { this.#player?.seekTo(sec, true); }
   time() { return this.#player?.getCurrentTime() ?? 0; }
   duration() { return this.#player?.getDuration() || NaN; }
@@ -201,6 +211,8 @@ class LinkVoice {
   #fadingOut = false;
   #started = false;
   disposed = false;
+  /** The browser refuses to start it (no click in Owlbear yet). */
+  blocked = false;
   onEnded: (() => void) | null = null;
   onError: ((msg: string) => void) | null = null;
 
@@ -228,11 +240,28 @@ class LinkVoice {
     this.#sound.seek(Math.max(0, pos));
     this.#sound.play();
     this.#started = true;
+    // Chrome blocks sound until the person clicks somewhere in Owlbear: keep trying until it plays.
+    this.#timers.push(setInterval(() => this.#keepPlaying(), 1500) as unknown as ReturnType<typeof setTimeout>);
     const elapsed = this.#now() - this.#voice.t0;
     this.#fade(this.#voice.vol, Math.max(400, this.#voice.fade - elapsed));
     // Stay in step: seek back when this browser drifts from where the GM's clock says the track is.
     this.#timers.push(setInterval(() => this.#resync(), 5000) as unknown as ReturnType<typeof setTimeout>);
     this.#scheduleEndFade();
+  }
+
+  #keepPlaying(): void {
+    if (this.disposed || this.#fadingOut || this.#sound.isEnded()) return;
+    this.blocked = !this.#sound.isPlaying();
+    if (this.blocked) this.retry();
+  }
+
+  /** Start again if the browser blocked it (back to where the GM's clock says it is). */
+  retry(): void {
+    if (!this.#started || this.disposed || this.#fadingOut || this.#sound.isPlaying() || this.#sound.isEnded()) return;
+    const want = position(this.#voice, this.#now(), this.#sound.duration());
+    if (want === null) return;
+    this.#sound.seek(Math.max(0, want));
+    this.#sound.play();
   }
 
   #resync(): void {
@@ -312,6 +341,15 @@ export class LinkPlayer {
   constructor(me: string) {
     this.#me = me;
     this.#clocks = new Clocks(me);
+  }
+
+  /** Some link here is being refused by the browser. */
+  get blocked(): boolean {
+    return [...this.#voices.values()].some(v => v.blocked && !v.disposed);
+  }
+
+  retry(): void {
+    for (const v of this.#voices.values()) v.retry();
   }
 
   /** The listener's own volume (gain 0–1). */
