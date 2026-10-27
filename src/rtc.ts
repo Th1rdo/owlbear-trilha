@@ -211,7 +211,13 @@ export class Receiver {
       }
       // Chrome blocks sound until the person clicks somewhere in Owlbear; keep trying until then.
       setTimeout(() => {
-        if (el.srcObject && el.paused) this.#play(el);
+        if (!el.srcObject) return;
+        if (el.paused) this.#play(el);
+        else if (this.blocked) {
+          // It started on its own (autoplay) once allowed.
+          this.blocked = false;
+          this.onChange?.();
+        }
       }, 1500);
     });
   }

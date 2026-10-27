@@ -1,6 +1,6 @@
 {
   "name": "owlbear-trilha",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "type": "module",
   "description": "Trilha for Owlbear Rodeo: playlists from your own MP3/WAV files, heard by the whole table in sync.",

@@ -87,3 +87,19 @@ globalThis.RTCPeerConnection = class extends Native {
     pcs.push(this);
   }
 } as typeof RTCPeerConnection;
+
+// ?blockplay=<ms>: refuse every play() for that long after load, as Chrome does before the first click.
+const blockFor = Number(new URLSearchParams(location.search).get("blockplay") ?? 0);
+if (blockFor > 0) {
+  const loaded = Date.now();
+  const nativePlay = HTMLMediaElement.prototype.play;
+  const refused: number[] = [];
+  Object.assign(globalThis, { __refused: refused });
+  HTMLMediaElement.prototype.play = function (this: HTMLMediaElement) {
+    if (Date.now() - loaded < blockFor) {
+      refused.push(Date.now() - loaded);
+      return Promise.reject(new DOMException("play() blocked (test)", "NotAllowedError"));
+    }
+    return nativePlay.call(this);
+  };
+}
