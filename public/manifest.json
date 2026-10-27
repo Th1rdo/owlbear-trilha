@@ -1,10 +1,10 @@
 {
   "name": "Trilha",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "manifest_version": 1,
   "author": "Th1rdo",
   "homepage_url": "https://github.com/Th1rdo/owlbear-trilha",
-  "description": "Playlists from your own MP3/WAV files, as in Foundry. Your music stays on your computer and the table hears it live.",
+  "description": "Playlists as in Foundry, from your own MP3/WAV files or YouTube links. The whole table hears them, in sync.",
   "icon": "/owlbear-trilha/icon.svg",
   "action": {
     "title": "Trilha",

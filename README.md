@@ -20,6 +20,11 @@ players hear the music without clicking anything.
   straight to each player (WebRTC, stereo 256 kbps). Nothing to download on their side; someone who joins
   late hears the song from where it is.
 - So **music plays while your Owlbear tab is open** — close it and the music stops for everyone.
+- **Or paste a link** (the *Link* button): a YouTube video, or a link to an audio file (Dropbox and Google
+  Drive share links work too). YouTube won't let a page take its sound, so these aren't streamed: each
+  player's browser plays the link itself, kept at the same point as yours (clocks are matched to the GM's,
+  and anyone drifting more than half a second is put back in place). Some YouTube videos are blocked
+  from playing outside YouTube by their owner; Trilha tells you when that happens.
 
 ## Features (as in Foundry)
 
@@ -27,7 +32,8 @@ players hear the music without clicking anything.
 - Play / pause / stop per track; play, stop, next and previous per playlist; per-track volume; repeat.
 - **Fade** per playlist. Switching tracks in a sequential or shuffle playlist fades the old one out
   completely and brings the new one in as it ends (no overlap; *Settings* sets when it comes in).
-- **Intro + loop:** with Repeat on, set *Loop start* and *Loop end* on a track — the intro plays once,
+- Files and links can share a playlist; the hand-over works between them.
+- **Intro + loop** (files only): with Repeat on, set *Loop start* and *Loop end* on a track — the intro plays once,
   then only that section repeats, gaplessly.
 - Everyone has their own volume slider (in the extension's window). Players see what is playing.
 - Portuguese or English, following the browser.

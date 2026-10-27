@@ -49,6 +49,20 @@ function tuneOpus(sdp: string): string {
   });
 }
 
+/**
+ * Someone left the room. Only people seen in the party before count: a newcomer's hello can arrive
+ * before Owlbear lists them, and they must not be dropped for that.
+ */
+function onLeave(fn: (id: string) => void): void {
+  const known = new Set<string>();
+  OBR.party.onChange(players => {
+    const here = new Set(players.map(p => p.connectionId));
+    for (const id of known) if (!here.has(id)) fn(id);
+    known.clear();
+    for (const id of here) known.add(id);
+  });
+}
+
 function onSignal(me: string, fn: (s: Signal) => void): () => void {
   return OBR.broadcast.onMessage(CH_SIGNAL, e => {
     const s = e.data as Signal;
@@ -69,10 +83,7 @@ export class Station {
     this.#me = me;
     this.#track = stream.getAudioTracks()[0];
     onSignal(me, s => this.#on(s));
-    OBR.party.onChange(players => {
-      const here = new Set(players.map(p => p.connectionId));
-      for (const id of this.#peers.keys()) if (!here.has(id)) this.#close(id);
-    });
+    onLeave(id => this.#close(id));
     window.addEventListener("pagehide", () => send({ kind: "bye", from: me }));
     send({ kind: "station", from: me });
   }
@@ -128,12 +139,17 @@ export class Receiver {
   constructor(me: string) {
     this.#me = me;
     onSignal(me, s => this.#on(s));
-    OBR.party.onChange(players => {
-      const here = new Set(players.map(p => p.connectionId));
-      for (const id of this.#peers.keys()) if (!here.has(id)) this.#close(id);
-    });
+    onLeave(id => this.#close(id));
     send({ kind: "hello", from: me });
+    // Hellos can cross a station that is still starting (everyone reloading at once): while nothing
+    // is connected or on its way, ask again.
+    setInterval(() => {
+      if (this.connected || Date.now() - this.#lastOffer < 10_000) return;
+      send({ kind: "hello", from: me });
+    }, 5000);
   }
+
+  #lastOffer = 0;
 
   /** Stations currently heard. */
   get connected(): number {
@@ -157,6 +173,7 @@ export class Receiver {
   }
 
   async #answer(station: string, sdp: string): Promise<void> {
+    this.#lastOffer = Date.now();
     this.#close(station);
     const pc = new RTCPeerConnection(ICE);
     const el = new Audio();

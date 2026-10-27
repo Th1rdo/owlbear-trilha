@@ -5,14 +5,18 @@ import type { Action, Playback } from "./logic.ts";
  *
  * The GM's music never leaves the GM's computer: the files sit in this browser (IndexedDB), the
  * background page plays them, and the mix is streamed live to every player over WebRTC. Owlbear's
- * broadcast messages carry only the WebRTC handshake; its room metadata carries only the names of
- * what is playing (for the players' window).
+ * broadcast messages carry the WebRTC handshake; its room metadata carries the names of what is playing
+ * (for the players' window) and the link tracks (YouTube, URLs), which each browser plays itself.
  */
 export const ID = "pt.th1rdo.trilha";
 /** OBR.broadcast channel for the WebRTC handshake. */
 export const CH_SIGNAL = `${ID}/signal`;
 /** Room metadata key prefix: `${NOW_KEY}/<connectionId>` → what that GM is playing. */
 export const NOW_KEY = `${ID}/now`;
+/** Room metadata key prefix: `${VOICES_KEY}/<connectionId>` → that GM's link voices (YouTube, URLs), which every browser plays itself. */
+export const VOICES_KEY = `${ID}/voices`;
+/** OBR.broadcast channel for measuring the offset to a GM's clock. */
+export const CH_CLOCK = `${ID}/clock`;
 
 /** One entry of a GM's "now playing" list, as players see it. */
 export interface NowPlaying {

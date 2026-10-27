@@ -77,16 +77,19 @@ main { padding-top: 6px; }
 .chevron svg { transition: transform 0.15s; }
 .chevron.open svg { transform: rotate(90deg); }
 .pl-body { padding: 0 0 6px 26px; }
-.pl-tools { display: flex; align-items: center; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
-.pl-tools button:first-child { font-size: 12px; padding: 4px 8px; }
+.pl-tools { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+.pl-tools button:not(.icon) { font-size: 12px; padding: 4px 8px; }
+.link-input { margin-top: 6px; }
 .fade { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-2); margin-left: auto; }
-.fade input { width: 52px; }
+.fade input { width: 44px; }
 
 .tracks { list-style: none; margin: 0; padding: 0; }
 .track { border-radius: 6px; }
 .track:hover { background: var(--hover); }
 .tr-row { display: flex; align-items: center; gap: 2px; min-height: 32px; padding-right: 2px; }
-.tr-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 4px; }
+.tr-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag { flex: none; }
 .track.active .tr-name { color: var(--primary); font-weight: 500; }
 .track.paused .tr-name { font-style: italic; }
 .tag { font-size: 10px; color: var(--text-3); border: 1px solid var(--line); border-radius: 4px; padding: 0 3px; }

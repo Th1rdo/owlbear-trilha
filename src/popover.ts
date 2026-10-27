@@ -8,6 +8,7 @@ import {
   type Action, type Library, type Mode, type Playback, type Playlist, type Track,
 } from "./logic.ts";
 import { localChannel, NOW_KEY, readMyVolume, saveMyVolume, type LocalMessage, type NowPlaying } from "./shared.ts";
+import { isLink, parseLink, youtubeTitle } from "./links.ts";
 import { ACCEPT, addFile, deleteFile, isAudio, loadLibrary, saveLibrary, storageInfo } from "./store.ts";
 
 /**
@@ -36,6 +37,8 @@ const collapsed = new Set<string>(readJson(COLLAPSED_KEY, []));
 const editing = new Set<string>();
 /** Playlist whose name is being edited in place. */
 let renaming: string | null = null;
+/** Playlist with the "paste a link" field open. */
+let linking: string | null = null;
 /** A delete button clicked once: the second click within 3 s confirms. */
 let armed: string | null = null;
 let armedTimer: ReturnType<typeof setTimeout> | null = null;
@@ -204,8 +207,10 @@ function playlistView(p: Playlist): string {
     ${open ? `
     <div class="pl-body">
       <ol class="tracks">${p.tracks.map((tr, i) => trackView(p, tr, i)).join("") || `<li class="muted pad drop-hint">${t.emptyPlaylist}</li>`}</ol>
+      ${linking === p.id ? `<input class="link-input" type="text" placeholder="${t.linkPlaceholder}" data-act="link">` : ""}
       <div class="pl-tools">
         <button data-act="add">${icon("plus")} ${t.addTracks}</button>
+        <button data-act="add-link">${icon("link")} ${t.addLink}</button>
         <label class="fade" title="${t.fade}">${t.fade}
           <input type="number" min="0" max="30" step="0.5" value="${p.fade / 1000}" data-act="fade"></label>
         <button class="icon" data-act="sort" title="${t.sortAZ}">${icon("sort")}</button>
@@ -227,7 +232,7 @@ function trackView(p: Playlist, tr: Track, i: number): string {
       ${active
         ? `<button class="icon" data-act="pause" title="${t.pause}">${icon("pause")}</button>`
         : `<button class="icon" data-act="play" title="${t.play}">${icon("play")}</button>`}
-      <span class="tr-name" title="${esc(tr.name)}">${esc(tr.name)}${loop ? ` <small class="tag">loop</small>` : ""}</span>
+      <span class="tr-name" title="${esc(tr.name)}"><span class="tr-title">${esc(tr.name)}</span>${loop ? ` <small class="tag">loop</small>` : ""}${tr.src.startsWith("yt:") ? ` <small class="tag">YouTube</small>` : isLink(tr.src) ? ` <small class="tag">link</small>` : ""}</span>
       ${active || paused ? `<button class="icon" data-act="stop" title="${t.stop}">${icon("stop")}</button>` : ""}
       <button class="icon toggle ${tr.repeat ? "on" : ""}" data-act="repeat" title="${t.repeat}">${icon("repeat")}</button>
       <input class="tr-vol" type="range" min="0" max="1" step="0.01" value="${gainToSlider(tr.vol)}" data-act="track-volume" title="${t.volume}">
@@ -237,11 +242,12 @@ function trackView(p: Playlist, tr: Track, i: number): string {
     ${editing.has(tr.id) ? `
     <div class="tr-edit">
       <label>${t.name}<input type="text" value="${esc(tr.name)}" data-act="track-name"></label>
+      ${isLink(tr.src) ? `<p class="muted">${t.linkNote}</p>` : `
       <div class="loop">
         <label>${t.loopStart}<input type="text" placeholder="0:40.000" value="${formatTime(tr.loopStart)}" data-act="loop-start"></label>
         <label>${t.loopEnd}<input type="text" placeholder="1:11.213" value="${formatTime(tr.loopEnd)}" data-act="loop-end"></label>
       </div>
-      <p class="muted">${t.loopHint}</p>
+      <p class="muted">${t.loopHint}</p>`}
       <div class="tr-edit-tools">
         <button class="icon" data-act="up" title="${t.up}" ${i === 0 ? "disabled" : ""}>${icon("up")}</button>
         <button class="icon" data-act="down" title="${t.down}" ${i === p.tracks.length - 1 ? "disabled" : ""}>${icon("down")}</button>
@@ -338,6 +344,11 @@ app.addEventListener("click", async e => {
     case "add":
       pickTarget = p ?? null;
       return document.getElementById("files")?.click();
+    case "add-link":
+      if (!p) return;
+      linking = linking === p.id ? null : p.id;
+      render();
+      return app.querySelector<HTMLInputElement>(".link-input")?.focus();
     case "sort":
       if (!p) return;
       p.tracks.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }));
@@ -442,6 +453,13 @@ app.addEventListener("change", e => {
 
 app.addEventListener("keydown", e => {
   const el = e.target as HTMLInputElement;
+  if (el.dataset?.act === "link") {
+    if (e.key === "Escape") {
+      linking = null;
+      render();
+    } else if (e.key === "Enter") addLink(el);
+    return;
+  }
   if (el.dataset?.act !== "pl-name") return;
   if (e.key === "Enter") el.blur();
   if (e.key === "Escape") {
@@ -497,6 +515,24 @@ app.addEventListener("drop", e => {
     addFiles(fresh, files);
   }
 });
+
+async function addLink(input: HTMLInputElement): Promise<void> {
+  const p = playlistOf(input);
+  const link = parseLink(input.value);
+  if (!p) return;
+  if (!link) {
+    input.classList.add("invalid");
+    OBR.notification.show(t.badLink, "WARNING");
+    return;
+  }
+  const title = link.src.startsWith("yt:") ? await youtubeTitle(link.src.slice(3)) : null;
+  p.tracks.push({ id: uid(), name: title ?? link.name, src: link.src, vol: 0.5, repeat: false });
+  input.value = "";
+  input.classList.remove("invalid");
+  await commit();
+  OBR.notification.show(t.added(1), "SUCCESS");
+  app.querySelector<HTMLInputElement>(".link-input")?.focus();
+}
 
 async function addFiles(p: Playlist, files: File[]): Promise<void> {
   let added = 0;
