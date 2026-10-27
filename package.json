@@ -1,0 +1,21 @@
+{
+  "name": "owlbear-trilha",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Trilha for Owlbear Rodeo: playlists from your own MP3/WAV files, heard by the whole table in sync.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test src/*.test.ts"
+  },
+  "dependencies": {
+    "@owlbear-rodeo/sdk": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}
